@@ -1,0 +1,70 @@
+name: Build APK from HTML
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Create basic Android project
+      run: |
+        mkdir -p app/src/main/assets
+        cp index.html app/src/main/assets/index.html
+        cat > app/build.gradle << 'EOF'
+        apply plugin: 'com.android.application'
+        android {
+            compileSdk 33
+            defaultConfig {
+                applicationId "ru.gmtools.app"
+                minSdk 21
+                targetSdk 33
+            }
+        }
+        dependencies {
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+        }
+        EOF
+
+    - name: Build APK
+      run: |
+        cd app
+        mkdir -p src/main/res/values
+        echo '<?xml version="1.0" encoding="utf-8"?>
+        <resources>
+            <string name="app_name">GM Tools</string>
+        </resources>' > src/main/res/values/strings.xml
+        cd ..
+        cat > settings.gradle << 'EOF'
+        rootProject.name = "gm-tools"
+        include ':app'
+        EOF
+        cat > build.gradle << 'EOF'
+        buildscript {
+            repositories { google(); mavenCentral() }
+            dependencies { classpath 'com.android.tools.build:gradle:7.4.2' }
+        }
+        allprojects { repositories { google(); mavenCentral() } }
+        EOF
+        ./gradlew assembleDebug --no-daemon
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        path: app/build/outputs/apk/debug/*.apk
