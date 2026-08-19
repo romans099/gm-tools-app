@@ -2,50 +2,492 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GM Tools</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GM Tools Overlay</title>
     <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family: Arial, sans-serif; background: #0a0a12; color: #fff; }
-        .app { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #0f0f1a; display: flex; flex-direction: column; }
-        .header { padding: 20px; background: #141422; border-bottom: 1px solid #2a2a3e; }
-        .header h1 { font-size: 20px; color: #8b5cf6; }
-        .content { flex: 1; padding: 20px; }
-        .content h2 { color: #8b5cf6; margin-bottom: 10px; }
-        .content p { color: #a0a0b8; }
-        .nav { display: grid; grid-template-columns: repeat(4, 1fr); padding: 10px 0; background: #141422; border-top: 1px solid #2a2a3e; }
-        .nav button { background: none; border: none; color: #6a6a82; padding: 8px; cursor: pointer; font-size: 10px; }
-        .nav button.active { color: #8b5cf6; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: transparent;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        /* Основное плавающее окно */
+        .overlay {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 340px;
+            max-height: 520px;
+            background: rgba(18, 18, 30, 0.92);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 0 0.5px rgba(255, 255, 255, 0.05);
+            transform: translateY(20px);
+            opacity: 0;
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 99999;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .overlay.active {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Заголовок с управлением */
+        .header {
+            padding: 16px 18px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            flex-shrink: 0;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .header:active {
+            cursor: grabbing;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #fff;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .header-title .icon {
+            font-size: 18px;
+        }
+
+        .header-title .badge {
+            font-size: 10px;
+            background: rgba(139, 92, 246, 0.25);
+            color: #a78bfa;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .controls {
+            display: flex;
+            gap: 6px;
+        }
+
+        .controls button {
+            background: rgba(255, 255, 255, 0.06);
+            border: none;
+            color: #8a8aa0;
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .controls button:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+        }
+
+        .controls button.close-btn:hover {
+            background: rgba(239, 68, 68, 0.25);
+            color: #f87171;
+        }
+
+        /* Содержимое */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 18px;
+            color: #c8c8e0;
+            font-size: 14px;
+            line-height: 1.6;
+            max-height: 340px;
+        }
+
+        .content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .content::-webkit-scrollbar-thumb {
+            background: rgba(139, 92, 246, 0.3);
+            border-radius: 4px;
+        }
+
+        .greeting {
+            font-size: 13px;
+            color: #8a8aa0;
+            margin-bottom: 4px;
+        }
+
+        .name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 12px;
+        }
+
+        /* Карточки */
+        .card {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 14px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background 0.15s;
+        }
+
+        .card:active {
+            background: rgba(255, 255, 255, 0.07);
+        }
+
+        .card-title {
+            font-weight: 600;
+            color: #fff;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .card-sub {
+            font-size: 12px;
+            color: #8a8aa0;
+        }
+
+        /* Переключатель */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 0;
+        }
+
+        .toggle {
+            width: 44px;
+            height: 26px;
+            background: #2a2a42;
+            border-radius: 13px;
+            cursor: pointer;
+            transition: background 0.25s;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .toggle.active {
+            background: #7c3aed;
+        }
+
+        .toggle.active .toggle-thumb {
+            transform: translateX(18px);
+            background: #fff;
+        }
+
+        .toggle-thumb {
+            width: 20px;
+            height: 20px;
+            background: #6a6a82;
+            border-radius: 50%;
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            transition: all 0.25s;
+        }
+
+        /* Кнопка вызова оверлея (плавающая) */
+        .trigger-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7c3aed, #6d28d9);
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            box-shadow: 0 8px 32px rgba(124, 58, 237, 0.4);
+            cursor: pointer;
+            z-index: 99998;
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        .trigger-btn:active {
+            transform: scale(0.92);
+            box-shadow: 0 4px 16px rgba(124, 58, 237, 0.3);
+        }
+
+        .trigger-btn.hidden {
+            transform: scale(0);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Анимация пульсации */
+        .trigger-btn::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            border: 2px solid rgba(124, 58, 237, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+
+        /* Мини-ресайз для маленьких экранов */
+        @media (max-width: 420px) {
+            .overlay {
+                bottom: 20px;
+                right: 20px;
+                width: 300px;
+                max-height: 460px;
+                border-radius: 20px;
+            }
+            .trigger-btn {
+                bottom: 20px;
+                right: 20px;
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+        }
+
+        /* Адаптация под светлую тему */
+        @media (prefers-color-scheme: light) {
+            .overlay {
+                background: rgba(245, 245, 255, 0.92);
+                border-color: rgba(0, 0, 0, 0.06);
+            }
+            .header-title { color: #1a1a2e; }
+            .greeting { color: #6a6a82; }
+            .name { color: #1a1a2e; }
+            .content { color: #3a3a50; }
+            .card { background: rgba(0, 0, 0, 0.03); }
+            .card-title { color: #1a1a2e; }
+            .controls button { color: #6a6a82; }
+            .controls button:hover { background: rgba(0, 0, 0, 0.06); color: #1a1a2e; }
+            .trigger-btn {
+                background: linear-gradient(135deg, #7c3aed, #6d28d9);
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="app">
-        <div class="header"><h1>🚀 GM Tools</h1></div>
-        <div class="content">
-            <h2 id="page-title">Главная</h2>
-            <p id="page-text">Добро пожаловать в GM Tools!</p>
+
+    <!-- Плавающий оверлей -->
+    <div class="overlay" id="overlay">
+        <div class="header" id="dragHandle">
+            <div class="header-title">
+                <span class="icon">⚡</span>
+                GM Tools
+                <span class="badge">оверлей</span>
+            </div>
+            <div class="controls">
+                <button id="minimizeBtn" title="Свернуть">─</button>
+                <button class="close-btn" id="closeBtn" title="Закрыть">✕</button>
+            </div>
         </div>
-        <div class="nav">
-            <button class="active" onclick="switchTab('home')">🏠 Главная</button>
-            <button onclick="switchTab('templates')">📄 Шаблоны</button>
-            <button onclick="switchTab('stats')">📊 Статистика</button>
-            <button onclick="switchTab('settings')">⚙️ Настройки</button>
+
+        <div class="content" id="content">
+            <div class="greeting">Привет,</div>
+            <div class="name">Администратор 👋</div>
+
+            <div class="card">
+                <div class="card-title">🟢 Статус</div>
+                <div class="card-sub">Всё работает</div>
+            </div>
+
+            <div class="card">
+                <div class="toggle-row">
+                    <div>
+                        <div class="card-title">📋 Режим тулс</div>
+                        <div class="card-sub">Быстрые действия</div>
+                    </div>
+                    <div class="toggle active" id="toggleBtn">
+                        <div class="toggle-thumb"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📊 Сессия</div>
+                <div class="card-sub" id="sessionTimer">⏱ 00:00:00</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📌 Шаблоны</div>
+                <div class="card-sub">/recruit · /inv · /mail</div>
+            </div>
         </div>
     </div>
+
+    <!-- Кнопка открытия -->
+    <button class="trigger-btn" id="triggerBtn">⚡</button>
+
     <script>
-        function switchTab(tab) {
-            const titles = { home: 'Главная', templates: 'Шаблоны', stats: 'Статистика', settings: 'Настройки' };
-            const texts = {
-                home: 'Добро пожаловать в GM Tools!',
-                templates: 'Здесь будут твои шаблоны.',
-                stats: 'Здесь будет статистика.',
-                settings: 'Здесь будут настройки.'
-            };
-            document.getElementById('page-title').textContent = titles[tab];
-            document.getElementById('page-text').textContent = texts[tab];
-            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.nav button')[['home','templates','stats','settings'].indexOf(tab)].classList.add('active');
+        // ====== ЭЛЕМЕНТЫ ======
+        const overlay = document.getElementById('overlay');
+        const triggerBtn = document.getElementById('triggerBtn');
+        const closeBtn = document.getElementById('closeBtn');
+        const minimizeBtn = document.getElementById('minimizeBtn');
+        const toggleBtn = document.getElementById('toggleBtn');
+        const dragHandle = document.getElementById('dragHandle');
+
+        let isMinimized = false;
+        let isOverlayVisible = false;
+
+        // ====== ОТКРЫТИЕ/ЗАКРЫТИЕ ======
+        function openOverlay() {
+            overlay.classList.add('active');
+            triggerBtn.classList.add('hidden');
+            isOverlayVisible = true;
         }
+
+        function closeOverlay() {
+            overlay.classList.remove('active');
+            triggerBtn.classList.remove('hidden');
+            isOverlayVisible = false;
+            isMinimized = false;
+        }
+
+        triggerBtn.addEventListener('click', openOverlay);
+        closeBtn.addEventListener('click', closeOverlay);
+
+        // ====== СВЁРТЫВАНИЕ ======
+        minimizeBtn.addEventListener('click', () => {
+            isMinimized = !isMinimized;
+            const content = document.getElementById('content');
+            if (isMinimized) {
+                content.style.display = 'none';
+                minimizeBtn.textContent = '□';
+            } else {
+                content.style.display = 'block';
+                minimizeBtn.textContent = '─';
+            }
+        });
+
+        // ====== ПЕРЕКЛЮЧАТЕЛЬ ======
+        toggleBtn.addEventListener('click', () => {
+            toggleBtn.classList.toggle('active');
+            const status = toggleBtn.classList.contains('active') ? '🟢 Включён' : '🔴 Выключен';
+            const card = toggleBtn.closest('.card');
+            const sub = card.querySelector('.card-sub');
+            if (sub) sub.textContent = status;
+        });
+
+        // ====== ПЕРЕТАСКИВАНИЕ ======
+        let isDragging = false;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        dragHandle.addEventListener('mousedown', startDrag);
+        dragHandle.addEventListener('touchstart', startDragTouch);
+
+        function startDrag(e) {
+            if (e.target.closest('.controls')) return;
+            isDragging = true;
+            const rect = overlay.getBoundingClientRect();
+            offsetX = e.clientX - rect.left;
+            offsetY = e.clientY - rect.top;
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', stopDrag);
+            overlay.style.cursor = 'grabbing';
+        }
+
+        function startDragTouch(e) {
+            if (e.target.closest('.controls')) return;
+            const touch = e.touches[0];
+            const rect = overlay.getBoundingClientRect();
+            offsetX = touch.clientX - rect.left;
+            offsetY = touch.clientY - rect.top;
+            isDragging = true;
+            document.addEventListener('touchmove', onDragTouch);
+            document.addEventListener('touchend', stopDragTouch);
+        }
+
+        function onDrag(e) {
+            if (!isDragging) return;
+            let x = e.clientX - offsetX;
+            let y = e.clientY - offsetY;
+            x = Math.max(10, Math.min(window.innerWidth - overlay.offsetWidth - 10, x));
+            y = Math.max(10, Math.min(window.innerHeight - overlay.offsetHeight - 10, y));
+            overlay.style.left = x + 'px';
+            overlay.style.top = y + 'px';
+            overlay.style.right = 'auto';
+            overlay.style.bottom = 'auto';
+        }
+
+        function onDragTouch(e) {
+            if (!isDragging) return;
+            const touch = e.touches[0];
+            let x = touch.clientX - offsetX;
+            let y = touch.clientY - offsetY;
+            x = Math.max(10, Math.min(window.innerWidth - overlay.offsetWidth - 10, x));
+            y = Math.max(10, Math.min(window.innerHeight - overlay.offsetHeight - 10, y));
+            overlay.style.left = x + 'px';
+            overlay.style.top = y + 'px';
+            overlay.style.right = 'auto';
+            overlay.style.bottom = 'auto';
+        }
+
+        function stopDrag() {
+            isDragging = false;
+            overlay.style.cursor = 'default';
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
+
+        function stopDragTouch() {
+            isDragging = false;
+            document.removeEventListener('touchmove', onDragTouch);
+            document.removeEventListener('touchend', stopDragTouch);
+        }
+
+        // ====== ТАЙМЕР СЕССИИ ======
+        let seconds = 0;
+        const timerEl = document.getElementById('sessionTimer');
+
+        setInterval(() => {
+            seconds++;
+            const h = String(Math.floor(seconds / 3600)).padStart(2, '0');
+            const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+            const s = String(seconds % 60).padStart(2, '0');
+            timerEl.textContent = `⏱ ${h}:${m}:${s}`;
+        }, 1000);
+
+        // ====== ОТКРЫТИЕ ПО УМОЛЧАНИЮ ======
+        setTimeout(openOverlay, 300);
     </script>
 </body>
-</html>
+    </html>
